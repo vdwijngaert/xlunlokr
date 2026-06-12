@@ -1,0 +1,9 @@
+# Real locked workbooks for local testing — must never enter the repo
+fixtures/
+
+# IDE
+.idea/
+
+# Build / deps
+node_modules/
+dist/
