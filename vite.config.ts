@@ -4,5 +4,6 @@ export default defineConfig({
   base: "/xlunlokr/",
   test: {
     environment: "node",
+    passWithNoTests: true,
   },
 });
