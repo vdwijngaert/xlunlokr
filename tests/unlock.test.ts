@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { strToU8, zipSync } from "fflate";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import { unlockWorkbook } from "../src/unlock";
 import { buildXlsx } from "./helpers/build-xlsx";
 
@@ -31,5 +31,74 @@ describe("unlockWorkbook input detection", () => {
 
   it("reports already-unlocked for a workbook without protection", () => {
     expect(unlockWorkbook(buildXlsx())).toEqual({ kind: "already-unlocked" });
+  });
+
+  it("reports not-excel for an empty zip archive", () => {
+    const empty = zipSync({});
+    expect(unlockWorkbook(empty)).toEqual({ kind: "error", reason: "not-excel" });
+  });
+});
+
+describe("unlockWorkbook stripping", () => {
+  const decoder = new TextDecoder();
+
+  it("removes sheetProtection from every worksheet", () => {
+    const result = unlockWorkbook(buildXlsx({ sheets: 3, sheetProtection: true }));
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    expect(result.sheetProtectionsRemoved).toBe(3);
+    expect(result.workbookProtectionsRemoved).toBe(0);
+    const entries = unzipSync(result.data);
+    for (const n of [1, 2, 3]) {
+      const xml = decoder.decode(entries[`xl/worksheets/sheet${n}.xml`]);
+      expect(xml).not.toContain("sheetProtection");
+      expect(xml).toContain("<sheetData>"); // regex must not eat neighbors
+      expect(xml).toContain("</worksheet>");
+    }
+  });
+
+  it("removes workbookProtection from workbook.xml", () => {
+    const result = unlockWorkbook(buildXlsx({ workbookProtection: true }));
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    expect(result.sheetProtectionsRemoved).toBe(0);
+    expect(result.workbookProtectionsRemoved).toBe(1);
+    const xml = decoder.decode(unzipSync(result.data)["xl/workbook.xml"]);
+    expect(xml).not.toContain("workbookProtection");
+    expect(xml).toContain("<sheets>");
+  });
+
+  it("removes paired-form protection tags", () => {
+    const result = unlockWorkbook(
+      buildXlsx({ sheetProtection: true, workbookProtection: true, pairedTags: true }),
+    );
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    expect(result.sheetProtectionsRemoved).toBe(1);
+    expect(result.workbookProtectionsRemoved).toBe(1);
+    const entries = unzipSync(result.data);
+    expect(decoder.decode(entries["xl/worksheets/sheet1.xml"])).not.toContain("Protection");
+    expect(decoder.decode(entries["xl/workbook.xml"])).not.toContain("Protection");
+  });
+
+  it("leaves untouched entries byte-identical and preserves entry order", () => {
+    const input = buildXlsx({ sheets: 2, sheetProtection: true });
+    const before = unzipSync(input);
+    const result = unlockWorkbook(input);
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    const after = unzipSync(result.data);
+    expect(Object.keys(after)).toEqual(Object.keys(before));
+    for (const name of Object.keys(before)) {
+      if (name.startsWith("xl/worksheets/")) continue;
+      expect(after[name]).toEqual(before[name]);
+    }
+  });
+
+  it("reports already-unlocked when run again on its own output", () => {
+    const result = unlockWorkbook(buildXlsx({ sheetProtection: true, workbookProtection: true }));
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    expect(unlockWorkbook(result.data)).toEqual({ kind: "already-unlocked" });
   });
 });
