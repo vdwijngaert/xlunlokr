@@ -101,4 +101,27 @@ describe("unlockWorkbook stripping", () => {
     if (result.kind !== "unlocked") return;
     expect(unlockWorkbook(result.data)).toEqual({ kind: "already-unlocked" });
   });
+
+  it("removes namespace-prefixed protection tags (paired form)", () => {
+    const result = unlockWorkbook(
+      buildXlsx({ sheetProtection: true, workbookProtection: true, nsPrefix: "x", pairedTags: true }),
+    );
+    expect(result.kind).toBe("unlocked");
+    if (result.kind !== "unlocked") return;
+    expect(result.sheetProtectionsRemoved).toBe(1);
+    expect(result.workbookProtectionsRemoved).toBe(1);
+    const entries = unzipSync(result.data);
+    expect(decoder.decode(entries["xl/worksheets/sheet1.xml"])).not.toContain("Protection");
+    expect(decoder.decode(entries["xl/workbook.xml"])).not.toContain("Protection");
+  });
+
+  it("ignores escaped protection-like text in shared strings", () => {
+    const entries = unzipSync(buildXlsx());
+    entries["xl/sharedStrings.xml"] = strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">' +
+        '<si><t>&lt;sheetProtection sheet="1"/&gt;</t></si></sst>',
+    );
+    expect(unlockWorkbook(zipSync(entries))).toEqual({ kind: "already-unlocked" });
+  });
 });

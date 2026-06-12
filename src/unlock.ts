@@ -17,9 +17,13 @@ const ZIP_MAGIC = [0x50, 0x4b];
 
 // Both elements are childless per the OOXML schema (CT_SheetProtection /
 // CT_WorkbookProtection), so removing the element via regex cannot orphan
-// children. Handles self-closing and paired forms.
-const SHEET_PROTECTION_RE = /<sheetProtection\b[^>]*(?:\/>|>\s*<\/sheetProtection\s*>)/g;
-const WORKBOOK_PROTECTION_RE = /<workbookProtection\b[^>]*(?:\/>|>\s*<\/workbookProtection\s*>)/g;
+// children. Handles self-closing and paired forms, including namespace-prefixed
+// forms (e.g. <x:sheetProtection>) produced by third-party generators such as
+// Apache POI.
+const SHEET_PROTECTION_RE =
+  /<(?:[\w.-]+:)?sheetProtection\b[^>]*(?:\/>|>\s*<\/(?:[\w.-]+:)?sheetProtection\s*>)/g;
+const WORKBOOK_PROTECTION_RE =
+  /<(?:[\w.-]+:)?workbookProtection\b[^>]*(?:\/>|>\s*<\/(?:[\w.-]+:)?workbookProtection\s*>)/g;
 
 export function unlockWorkbook(data: Uint8Array): UnlockResult {
   // OLE/CFB container: either an open-password-encrypted workbook or a legacy .xls.

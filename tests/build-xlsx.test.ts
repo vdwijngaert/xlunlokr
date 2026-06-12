@@ -35,4 +35,10 @@ describe("buildXlsx", () => {
     const entries = unzipSync(buildXlsx({ sheetProtection: true, pairedTags: true }));
     expect(decoder.decode(entries["xl/worksheets/sheet1.xml"])).toContain("</sheetProtection>");
   });
+
+  it("qualifies protection tags with a namespace prefix when requested", () => {
+    const entries = unzipSync(buildXlsx({ sheetProtection: true, workbookProtection: true, nsPrefix: "x" }));
+    expect(decoder.decode(entries["xl/worksheets/sheet1.xml"])).toContain("<x:sheetProtection");
+    expect(decoder.decode(entries["xl/workbook.xml"])).toContain("<x:workbookProtection");
+  });
 });

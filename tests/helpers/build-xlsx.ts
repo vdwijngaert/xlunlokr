@@ -9,6 +9,8 @@ export interface BuildOptions {
   workbookProtection?: boolean;
   /** Write protection tags as <x ...></x> instead of self-closing <x .../>. */
   pairedTags?: boolean;
+  /** Qualify protection tags with this namespace prefix (e.g. "x"). */
+  nsPrefix?: string;
 }
 
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
@@ -16,18 +18,20 @@ const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 export function buildXlsx(opts: BuildOptions = {}): Uint8Array {
   const sheetCount = opts.sheets ?? 1;
   const nums = Array.from({ length: sheetCount }, (_, i) => i + 1);
+  const paired = opts.pairedTags ?? false;
+  const prefix = opts.nsPrefix ? `${opts.nsPrefix}:` : "";
 
   // Attribute values deliberately contain base64 chars (+ / =) to exercise the
   // stripping regex against realistic hashValue/saltValue content.
   const sheetProtection = opts.sheetProtection
     ? tag(
-        "sheetProtection",
+        `${prefix}sheetProtection`,
         'algorithmName="SHA-512" hashValue="q+r/s7w9==" saltValue="c2FsdA==" spinCount="100000" sheet="1" objects="1" scenarios="1"',
-        opts.pairedTags ?? false,
+        paired,
       )
     : "";
   const workbookProtection = opts.workbookProtection
-    ? tag("workbookProtection", 'lockStructure="1"', opts.pairedTags ?? false)
+    ? tag(`${prefix}workbookProtection`, 'lockStructure="1"', paired)
     : "";
 
   const files: Zippable = {
