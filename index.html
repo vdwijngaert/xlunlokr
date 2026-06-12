@@ -2,10 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>xlunlokr</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>xlunlokr — unlock protected Excel sheets in your browser</title>
+    <meta
+      name="description"
+      content="Remove sheet and workbook protection from Excel files. 100% client-side: your files never leave your browser."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔓</text></svg>"
+    />
   </head>
   <body>
-    <h1>xlunlokr</h1>
+    <main>
+      <header>
+        <h1>xlunlokr</h1>
+        <p class="tagline">Remove sheet &amp; workbook protection from Excel files.</p>
+        <p class="privacy">🔒 Your files never leave your browser — everything runs locally.</p>
+      </header>
+      <div id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop Excel files">
+        <strong>Drop Excel files here</strong>
+        <span>or click to choose — .xlsx, .xlsm, .xltx, .xltm</span>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xlsm,.xltx,.xltm" multiple hidden />
+      <ul id="results"></ul>
+      <button id="download-all" hidden>Download all</button>
+      <footer>
+        <p>
+          Removes edit protection (<code>sheetProtection</code> / <code>workbookProtection</code>) only.
+          It cannot decrypt files that need a password to open. Use it on files you're allowed to modify.
+        </p>
+        <p><a href="https://github.com/__GH_USER__/xlunlokr">Source on GitHub</a></p>
+      </footer>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
