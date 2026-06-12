@@ -21,6 +21,8 @@ interface PendingDownload {
   filename: string;
 }
 
+// Running log across drops: "Download all" re-downloads every file unlocked
+// this session, matching the cumulative results list.
 const downloads: PendingDownload[] = [];
 
 dropZone.addEventListener("click", () => fileInput.click());
@@ -50,25 +52,35 @@ downloadAllButton.addEventListener("click", () => {
 
 async function processFiles(files: FileList): Promise<void> {
   for (const file of files) {
-    const data = new Uint8Array(await file.arrayBuffer());
-    addResultRow(file.name, unlockWorkbook(data));
+    try {
+      const data = new Uint8Array(await file.arrayBuffer());
+      addResultRow(file.name, unlockWorkbook(data));
+    } catch {
+      appendRow(file.name, "error", "Couldn't read this file");
+    }
   }
   downloadAllButton.hidden = downloads.length < 2;
 }
 
-function addResultRow(name: string, result: UnlockResult): void {
+function appendRow(name: string, kind: string, statusText: string): HTMLLIElement {
   const row = document.createElement("li");
-  row.className = `result ${result.kind}`;
+  row.className = `result ${kind}`;
 
   const title = document.createElement("span");
   title.className = "filename";
   title.textContent = name;
-  row.append(title);
 
   const status = document.createElement("span");
   status.className = "status";
-  status.textContent = statusMessage(result);
-  row.append(status);
+  status.textContent = statusText;
+
+  row.append(title, status);
+  resultsList.append(row);
+  return row;
+}
+
+function addResultRow(name: string, result: UnlockResult): void {
+  const row = appendRow(name, result.kind, statusMessage(result));
 
   if (result.kind === "unlocked") {
     const blob = new Blob([result.data.slice().buffer], { type: EXCEL_MIME });
@@ -83,8 +95,6 @@ function addResultRow(name: string, result: UnlockResult): void {
     button.addEventListener("click", () => triggerDownload(download));
     row.append(button);
   }
-
-  resultsList.append(row);
 }
 
 function statusMessage(result: UnlockResult): string {
